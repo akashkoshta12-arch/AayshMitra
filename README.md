@@ -95,3 +95,40 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+
+# 💊 AayushMitra (आयुषमित्र) - Offline Senior Citizen Medicine Reminder App
+
+**AayushMitra** ek 100% Offline, senior-friendly React Native (CLI) mobile application hai jo buzurgo ko unki dawa sahi samay par lene me madad karti hai.
+
+---
+
+## 🌟 Key Features
+
+- **100% Offline Functionality:** Bina internet ke chalne wala complete system (Local SQLite Database).
+- **Dual Language Support:** Simple Hindi (🇮🇳) aur English (🇬🇧) language toggle.
+- **Smart Camera & On-Device OCR:** Dawa ki strip/box ki photo click karke bina internet ke naam auto-detect/scan karein.
+- **High Contrast Senior-Friendly UI:** Bade buttons, bold readable text, aur safe area protection (Notch/Status Bar compatible).
+- **Exact Alarms & Loud Notifications:** Background me phone sleep hone par bhi time par loud ring aur full-screen prompt.
+- **Meal Instructions:** Khane se pehle ya khane ke baad ka clear visual indicator.
+- **Course & Low-Stock Refill Alerts:** Total goli (tablets) aur course duration track karta hai; dawa khatam hone se pehle refill alert deta hai.
+
+---
+
+## 🛠️ Tech Stack & Dependencies
+
+- **Framework:** React Native CLI (0.74+)
+- **Storage / Database:** `@op-engineering/op-sqlite`, `@react-native-async-storage/async-storage`
+- **Camera & OCR:** `react-native-image-picker`, `@react-native-ml-kit/text-recognition`
+- **Notifications & Alarms:** `@notifee/react-native`
+- **Navigation:** `@react-navigation/native`, `@react-navigation/native-stack`
+- **Safe Screen Layout:** `react-native-safe-area-context`, `react-native-screens`
+
+---
+
+## 🚀 Setup & Installation Instructions
+
+### 1. Clone the repository
+```bash
+git clone <YOUR_GITHUB_REPO_URL>
+cd AayushMitra
