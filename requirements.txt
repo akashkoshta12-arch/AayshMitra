@@ -1,0 +1,38 @@
+---
+
+### 2. `requirements.txt` File
+
+Project ke root folder me **`requirements.txt`** create karein:
+
+```text
+# ==========================================
+# AayushMitra - Environment & Dependency Spec
+# ==========================================
+
+# Runtime & Tools
+Node.js >= 18.x
+npm >= 9.x
+Java Development Kit (JDK) = 17
+Android SDK Platform = 34 (or custom target 36/37)
+Gradle = 9.4.1
+
+# Core Mobile Framework
+react = 18.x / latest
+react-native = 0.74+ / latest
+
+# Navigation & Screen Layout
+@react-navigation/native
+@react-navigation/native-stack
+react-native-screens
+react-native-safe-area-context
+
+# Offline Database & Key-Value Storage
+@op-engineering/op-sqlite
+@react-native-async-storage/async-storage
+
+# Camera & Machine Learning (On-Device OCR)
+react-native-image-picker
+@react-native-ml-kit/text-recognition
+
+# Notifications & Background Alarms
+@notifee/react-native
