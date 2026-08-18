@@ -19,5 +19,8 @@ export default function App() {
         <AppNavigator />
       </LanguageProvider>
     </SafeAreaProvider>
+
+    
   );
+  
 }

@@ -1,44 +1,97 @@
-import notifee, { TriggerType, RepeatFrequency, AndroidImportance, AndroidVisibility } from '@notifee/react-native';
+import notifee, {
+  TriggerType,
+  RepeatFrequency,
+  AndroidImportance,
+  AndroidCategory,
+  AndroidVisibility,
+  AndroidAlarmMode,
+} from '@notifee/react-native';
 
 export const setupNotificationChannels = async () => {
-  await notifee.createChannel({
-    id: 'medicine_alarms',
-    name: 'Dawa Reminders',
-    importance: AndroidImportance.HIGH,
-    sound: 'default',
-    vibration: true,
-  });
+  try {
+    // 1. Android 13+ Notification Request
+    await notifee.requestPermission();
+
+    // 2. Android 12+ Exact Alarm Permission Dialog Check
+    const settings = await notifee.getNotificationSettings();
+    if (settings.android && settings.android.alarm === 0) {
+      await notifee.openAlarmPermissionSettings();
+    }
+
+    // 3. High Priority Sound & Vibration Alarm Channel
+    await notifee.createChannel({
+      id: 'medicine_alarm_channel',
+      name: 'Medicine Reminders',
+      importance: AndroidImportance.HIGH,
+      sound: 'default',
+      vibration: true,
+      vibrationPattern: [300, 500, 300, 500],
+      visibility: AndroidVisibility.PUBLIC,
+      bypassDnd: true,
+    });
+    console.log('Notification channel ready');
+  } catch (e) {
+    console.log('Channel creation error:', e);
+  }
 };
 
-export const scheduleDailyMedicineAlarm = async (id, name, imageUri, mealType, hour, minute) => {
-  const date = new Date();
-  date.setHours(hour, minute, 0, 0);
+export const createNotificationChannels = setupNotificationChannels;
 
-  if (date.getTime() <= Date.now()) {
-    date.setDate(date.getDate() + 1);
-  }
+export const scheduleDailyMedicineAlarm = async (id, medName, imageUri, mealType, timeString) => {
+  try {
+    await setupNotificationChannels();
 
-  const trigger = {
-    type: TriggerType.TIMESTAMP,
-    timestamp: date.getTime(),
-    repeatFrequency: RepeatFrequency.DAILY,
-    alarmManager: { allowWhileIdle: true },
-  };
+    // Parse Hour and Minute accurately
+    const [hourStr, minStr] = timeString.split(':');
+    const targetHour = parseInt(hourStr, 10);
+    const targetMin = parseInt(minStr, 10);
 
-  await notifee.createTriggerNotification(
-    {
-      id: `med_${id}`,
-      title: `🔔 Dawa Lene Ka Time: ${name}`,
-      body: mealType === 'BEFORE_MEAL' ? '⚠️ Khane Se Pehle Lein' : '✅ Khane Ke Baad Lein',
-      android: {
-        channelId: 'medicine_alarms',
-        importance: AndroidImportance.HIGH,
-        visibility: AndroidVisibility.PUBLIC,
-        fullScreenAction: { id: 'default' },
-        pressAction: { id: 'default', launchActivity: 'default' },
+    const now = new Date();
+    const triggerDate = new Date();
+    triggerDate.setHours(targetHour, targetMin, 0, 0);
+
+    // Agar set time pichhle 5 second se pehle ka hai tabhi kal ke liye set karein
+    if (triggerDate.getTime() < now.getTime() - 5000) {
+      triggerDate.setDate(triggerDate.getDate() + 1);
+    }
+
+    const mealText = mealType === 'BEFORE_MEAL' ? 'खाने से पहले' : 'खाने के बाद';
+
+    // Exact Alarm Trigger
+    const trigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: triggerDate.getTime(),
+      repeatFrequency: RepeatFrequency.DAILY,
+      alarmManager: {
+        type: AndroidAlarmMode.SET_ALARM_CLOCK,
+        allowWhileIdle: true,
       },
-      data: { id: id.toString(), name, imageUri, mealType },
-    },
-    trigger
-  );
+    };
+
+    await notifee.createTriggerNotification(
+      {
+        id: String(id),
+        title: `🔔 दवा का समय: ${medName}`,
+        body: `कृपया अपनी दवा लें (${mealText})`,
+        android: {
+          channelId: 'medicine_alarm_channel',
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.ALARM,
+          sound: 'default',
+          vibrationPattern: [300, 500, 300, 500],
+          pressAction: {
+            id: 'default',
+          },
+          fullScreenAction: {
+            id: 'default',
+          },
+        },
+      },
+      trigger
+    );
+
+    console.log(`[ALARM SCHEDULED] Time: ${triggerDate.toLocaleTimeString()} | ID: ${id}`);
+  } catch (err) {
+    console.log('Alarm scheduling failed:', err);
+  }
 };
