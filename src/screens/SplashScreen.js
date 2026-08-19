@@ -1,85 +1,134 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SplashScreen({ navigation }) {
-  const fadeAnim = new Animated.Value(0);
 
   useEffect(() => {
-    // Fade-in animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1200,
-      useNativeDriver: true,
-    }).start();
 
-    // Check login state
-    const checkLogin = async () => {
+    const timer = setTimeout(async () => {
+
       try {
-        const userPhone = await AsyncStorage.getItem('user_phone');
-        setTimeout(() => {
-          if (userPhone) {
-            navigation.replace('Home');
-          } else {
-            navigation.replace('Login');
-          }
-        }, 2000);
+
+        const profile =
+          await AsyncStorage.getItem('patient_profile');
+
+        if (profile) {
+
+          navigation.replace('Home');
+
+        } else {
+
+          // ProfileSetup screen nahi hai.
+          // Tumhara profile setup LoginScreen me hai.
+          navigation.replace('Login');
+
+        }
+
       } catch (e) {
+
+        console.log(
+          '[SPLASH ERROR]',
+          e
+        );
+
         navigation.replace('Login');
       }
-    };
 
-    checkLogin();
-  }, [fadeAnim, navigation]);
+    }, 2200);
+
+
+    return () => clearTimeout(timer);
+
+  }, [navigation]);
+
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+
+      <View style={styles.logoContainer}>
+
         <View style={styles.iconCircle}>
-          <Text style={styles.icon}>💊</Text>
+
+          <Text style={styles.logoIcon}>
+            💊
+          </Text>
+
         </View>
-        <Text style={styles.appName}>AayushMitra</Text>
-        <Text style={styles.tagline}>Aapka Swasthya, Hamara Saath</Text>
-      </Animated.View>
+
+        <Text style={styles.appName}>
+          AayushMitra
+        </Text>
+
+        <Text style={styles.tagline}>
+          आपकी सेहत, आपका साथी
+        </Text>
+
+      </View>
+
+      <ActivityIndicator
+        size="large"
+        color="#38BDF8"
+        style={styles.loader}
+      />
+
     </View>
   );
 }
 
+
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: '#0F172A', // High contrast dark blue background
+    backgroundColor: '#0F172A',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
+
+  logoContainer: {
     alignItems: 'center',
   },
+
   iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: '#1E293B',
-    borderWidth: 3,
-    borderColor: '#38BDF8',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    elevation: 8,
+    marginBottom: 18,
+    borderWidth: 2,
+    borderColor: '#38BDF8',
   },
-  icon: {
-    fontSize: 54,
+
+  logoIcon: {
+    fontSize: 50,
   },
+
   appName: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 1,
   },
+
   tagline: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#94A3B8',
     marginTop: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
+
+  loader: {
+    position: 'absolute',
+    bottom: 50,
+  },
+
 });
