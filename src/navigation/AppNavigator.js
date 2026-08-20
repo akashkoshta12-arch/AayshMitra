@@ -10,7 +10,9 @@ import AddMedicineScreen from '../screens/AddMedicineScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import AlarmRingScreen from '../screens/AlarmRingScreen';
 
-
+import DashboardScreen from '../screens/DashboardScreen';
+import ReportsScreen from '../screens/ReportsScreen';
+import AddReportScreen from '../screens/AddReportScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,6 +29,10 @@ export default function AppNavigator() {
         <Stack.Screen name="AddMedicine" component={AddMedicineScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="AlarmRing" component={AlarmRingScreen} />
+
+        <Stack.Screen name="Dashboard" component={DashboardScreen}/>
+        <Stack.Screen name="Reports" component={ReportsScreen}/>
+        <Stack.Screen name="AddReport" component={AddReportScreen}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

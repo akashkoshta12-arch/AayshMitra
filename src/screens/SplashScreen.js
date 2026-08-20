@@ -12,37 +12,29 @@ export default function SplashScreen({ navigation }) {
 
   useEffect(() => {
 
-    const timer = setTimeout(async () => {
-
+    const checkUser = async () => {
       try {
-
-        const profile =
-          await AsyncStorage.getItem('patient_profile');
+        const profile = await AsyncStorage.getItem('patient_profile');
 
         if (profile) {
-
-          navigation.replace('Home');
-
+          // Existing user
+          navigation.replace('Dashboard');
         } else {
-
-          // ProfileSetup screen nahi hai.
-          // Tumhara profile setup LoginScreen me hai.
+          // New user
           navigation.replace('Login');
-
         }
 
-      } catch (e) {
+      } catch (error) {
+        console.log('[SPLASH] Profile check error:', error);
 
-        console.log(
-          '[SPLASH ERROR]',
-          e
-        );
-
+        // Error ki situation me Login screen
         navigation.replace('Login');
       }
+    };
 
+    const timer = setTimeout(() => {
+      checkUser();
     }, 2200);
-
 
     return () => clearTimeout(timer);
 
@@ -55,11 +47,9 @@ export default function SplashScreen({ navigation }) {
       <View style={styles.logoContainer}>
 
         <View style={styles.iconCircle}>
-
           <Text style={styles.logoIcon}>
             💊
           </Text>
-
         </View>
 
         <Text style={styles.appName}>

@@ -28,7 +28,7 @@ export default function LoginScreen({ navigation }) {
     await AsyncStorage.setItem('patient_profile', JSON.stringify(patientProfile));
     await AsyncStorage.setItem('user_phone', phone.trim());
 
-    navigation.replace('Home');
+    navigation.replace('Dashboard');
   };
 
   return (
