@@ -246,28 +246,127 @@ export const getMedicineById = async (id) => {
 
 
 // =====================================================
-// 5. UPDATE MEDICINE
-// IMPORTANT:
-// Remaining stock intentionally preserve kiya gaya hai.
-// Edit karne se stock reset nahi hoga.
+// Edit / Update Medicine
 // =====================================================
+
 export const updateMedicine = async (med) => {
   try {
-    if (!med?.id) {
-      console.log('[DB UPDATE] Medicine ID missing');
-      return false;
-    }
 
-    const existingMedicine = await getMedicineById(med.id);
+    // ---------------------------------------------
+    // 1. Existing medicine fetch karo
+    // ---------------------------------------------
 
-    if (!existingMedicine) {
+    const existingResult = await db.execute(
+      `SELECT total_stock, remaining_stock
+       FROM medicines
+       WHERE id = ?;`,
+      [med.id]
+    );
+
+    if (
+      !existingResult ||
+      !existingResult.rows ||
+      existingResult.rows.length === 0
+    ) {
       console.log(
         '[DB UPDATE] Medicine not found:',
         med.id
       );
 
-      return false;
+      return null;
     }
+
+    const existingMedicine =
+      existingResult.rows.item
+        ? existingResult.rows.item(0)
+        : existingResult.rows[0];
+
+
+    // ---------------------------------------------
+    // 2. Old values
+    // ---------------------------------------------
+
+    const oldTotalStock =
+      Number(existingMedicine.total_stock) || 0;
+
+    const oldRemainingStock =
+      Number(existingMedicine.remaining_stock) || 0;
+
+
+    // ---------------------------------------------
+    // 3. New Total Stock
+    // ---------------------------------------------
+
+    const newTotalStock =
+      Number(med.totalStock) || oldTotalStock;
+
+
+    // ---------------------------------------------
+    // 4. Calculate already consumed tablets
+    //
+    // Example:
+    // Old Total     = 30
+    // Old Remaining = 24
+    //
+    // Consumed = 30 - 24 = 6
+    // ---------------------------------------------
+
+    const consumedStock =
+      Math.max(
+        0,
+        oldTotalStock - oldRemainingStock
+      );
+
+
+    // ---------------------------------------------
+    // 5. Calculate new Remaining Stock
+    //
+    // Example:
+    // New Total = 50
+    // Consumed = 6
+    //
+    // New Remaining = 50 - 6 = 44
+    // ---------------------------------------------
+
+    let newRemainingStock =
+      newTotalStock - consumedStock;
+
+
+    // Stock negative nahi hone dena
+    if (newRemainingStock < 0) {
+      newRemainingStock = 0;
+    }
+
+
+    console.log(
+      '[DB UPDATE] Old Total:',
+      oldTotalStock
+    );
+
+    console.log(
+      '[DB UPDATE] Old Remaining:',
+      oldRemainingStock
+    );
+
+    console.log(
+      '[DB UPDATE] Consumed:',
+      consumedStock
+    );
+
+    console.log(
+      '[DB UPDATE] New Total:',
+      newTotalStock
+    );
+
+    console.log(
+      '[DB UPDATE] New Remaining:',
+      newRemainingStock
+    );
+
+
+    // ---------------------------------------------
+    // 6. Update medicine
+    // ---------------------------------------------
 
     const query = `
       UPDATE medicines
@@ -275,6 +374,7 @@ export const updateMedicine = async (med) => {
         name = ?,
         image_uri = ?,
         total_stock = ?,
+        remaining_stock = ?,
         course_days = ?,
         meal_type = ?,
         alarm_time = ?,
@@ -282,37 +382,58 @@ export const updateMedicine = async (med) => {
       WHERE id = ?;
     `;
 
+
     const params = [
       med.name,
-      med.imageUri ?? existingMedicine.image_uri ?? '',
-      Number(med.totalStock) || existingMedicine.total_stock || 0,
-      Number(med.courseDays) || existingMedicine.course_days || 0,
-      med.mealType ?? existingMedicine.meal_type ?? '',
-      med.alarmTime ?? existingMedicine.alarm_time ?? '08:00',
+
+      med.imageUri || '',
+
+      newTotalStock,
+
+      newRemainingStock,
+
+      Number(med.courseDays) || 0,
+
+      med.mealType,
+
+      med.alarmTime || '08:00',
+
       JSON.stringify(
-        med.doses ||
-        existingMedicine.doses ||
-        [med.alarmTime || existingMedicine.alarm_time || '08:00']
+        med.doses || [
+          med.alarmTime || '08:00'
+        ]
       ),
+
       med.id,
     ];
 
-    await db.execute(query, params);
+
+    const result =
+      await db.execute(
+        query,
+        params
+      );
+
 
     console.log(
-      '[DB] Medicine updated:',
+      '[DB UPDATE] Medicine updated successfully:',
       med.id
     );
 
-    return true;
 
-  } catch (error) {
-    console.log('[DB UPDATE ERROR]:', error);
+    return result;
 
-    return false;
+
+  } catch (err) {
+
+    console.log(
+      '[DB UPDATE ERROR]',
+      err
+    );
+
+    return null;
   }
 };
-
 
 // =====================================================
 // 6. MANUAL STOCK UPDATE
@@ -352,68 +473,83 @@ export const addMedicineStock = async (medicineId, quantity) => {
 
 
 // =====================================================
-// 7. DELETE MEDICINE
-// IMPORTANT:
-// History DELETE nahi hogi.
-// Sirf medicine + future notifications remove honge.
+// Delete Medicine
+// Medicine delete hogi
+// History preserve rahegi
+// Notifications bhi cancel honge
 // =====================================================
+
 export const deleteMedicine = async (id) => {
   try {
-    if (!id) {
+    const medicineId = Number(id);
+
+    if (!Number.isInteger(medicineId)) {
+      console.log('[DELETE] Invalid medicine ID:', id);
       return false;
     }
 
-    // -------------------------------------------------
-    // NotificationService ko dynamic import kar rahe hain
-    // taaki circular dependency ka risk na ho.
-    // -------------------------------------------------
-    try {
-      const {
-        cancelAllNotificationsForMedicine,
-      } = await import(
-        '../services/NotificationService'
-      );
-
-      if (cancelAllNotificationsForMedicine) {
-        await cancelAllNotificationsForMedicine(id);
-      }
-
-    } catch (notificationError) {
-      console.log(
-        '[DELETE] Notification cancel error:',
-        notificationError
-      );
-    }
-
-
-    // -------------------------------------------------
-    // Medicine delete
-    // -------------------------------------------------
-    await db.execute(
-      `
-      DELETE FROM medicines
-      WHERE id = ?;
-      `,
-      [id]
+    console.log(
+      '[DELETE] Starting delete:',
+      medicineId
     );
 
+    // -------------------------------------------------
+    // 1. Pehle database se medicine delete karo
+    // -------------------------------------------------
+
+    const result = await db.execute(
+      `DELETE FROM medicines WHERE id = ?;`,
+      [medicineId]
+    );
+
+    console.log(
+      '[DELETE] Database delete completed:',
+      result
+    );
 
     // -------------------------------------------------
-    // IMPORTANT:
-    // medicine_history ko DELETE nahi karna.
-    // Purani history future me bhi dikhni chahiye.
+    // 2. History ko intentionally DELETE nahi karna
     // -------------------------------------------------
 
     console.log(
-      '[DB] Medicine deleted:',
-      id
+      '[DELETE] Medicine history preserved'
     );
+
+    // -------------------------------------------------
+    // 3. Notifications cancel karo
+    //
+    // Agar notification cancellation fail bhi ho,
+    // medicine delete already ho chuki hai.
+    // -------------------------------------------------
+
+    try {
+      await cancelAllNotificationsForMedicine(
+        medicineId
+      );
+
+      console.log(
+        '[DELETE] Notifications cancelled:',
+        medicineId
+      );
+
+    } catch (notificationError) {
+
+      console.log(
+        '[DELETE] Notification cancellation failed:',
+        notificationError
+      );
+
+      // IMPORTANT:
+      // Notification error ki wajah se
+      // delete operation fail nahi hoga.
+    }
 
     return true;
 
   } catch (error) {
+
     console.log(
-      '[DB DELETE MEDICINE ERROR]:',
+      '[DELETE MEDICINE ERROR]',
       error
     );
 
@@ -421,18 +557,12 @@ export const deleteMedicine = async (id) => {
   }
 };
 
+// =====================================================
+// Record Medicine Action
+// TAKEN / MISSED
+// Every dose creates a separate history record
+// =====================================================
 
-// =====================================================
-// 8. RECORD TAKEN / MISSED ACTION
-//
-// TAKEN:
-//   History INSERT
-//   Stock -1
-//
-// MISSED:
-//   History INSERT
-//   Stock unchanged
-// =====================================================
 export const recordMedicineAction = async (
   medicineId,
   medicineName,
@@ -441,73 +571,48 @@ export const recordMedicineAction = async (
 ) => {
   try {
 
-    if (!medicineId) {
-      console.log(
-        '[ACTION] Medicine ID missing'
-      );
+    const now = new Date();
 
-      return {
-        success: false,
-      };
-    }
+    // Local date - India ke liye correct
+    const year = now.getFullYear();
 
+    const month = String(
+      now.getMonth() + 1
+    ).padStart(2, '0');
 
-    // -------------------------------------------------
-    // Only valid statuses
-    // -------------------------------------------------
-    if (status !== 'TAKEN' && status !== 'MISSED') {
-      console.log(
-        '[ACTION] Invalid status:',
-        status
-      );
+    const day = String(
+      now.getDate()
+    ).padStart(2, '0');
 
-      return {
-        success: false,
-      };
-    }
+    const dateStr =
+      `${year}-${month}-${day}`;
 
 
-    // -------------------------------------------------
-    // First verify medicine still exists.
-    //
-    // Agar medicine delete ho chuki hai aur koi old
-    // notification press ho gaya, to history/stock
-    // update nahi hona chahiye.
-    // -------------------------------------------------
-    const medicine = await getMedicineById(
-      medicineId
+    // Local time
+    const timeStr =
+      now.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+
+    console.log(
+      '[HISTORY] Recording action:',
+      {
+        medicineId,
+        medicineName,
+        doseTime,
+        status,
+        date: dateStr,
+        actionTime: timeStr,
+      }
     );
 
-    if (!medicine) {
-      console.log(
-        '[ACTION] Medicine no longer exists:',
-        medicineId
-      );
-
-      return {
-        success: false,
-        deleted: true,
-      };
-    }
-
-
-    const finalMedicineName =
-      medicine.name ||
-      medicineName ||
-      'Medicine';
-
 
     // -------------------------------------------------
-    // Current local date/time
+    // Every dose = separate history record
     // -------------------------------------------------
-    const dateStr = getLocalDate();
 
-    const timeStr = getLocalTime();
-
-
-    // -------------------------------------------------
-    // History INSERT
-    // -------------------------------------------------
     await db.execute(
       `
       INSERT INTO medicine_history
@@ -523,7 +628,7 @@ export const recordMedicineAction = async (
       `,
       [
         medicineId,
-        finalMedicineName,
+        medicineName,
         status,
         doseTime || '',
         timeStr,
@@ -532,14 +637,11 @@ export const recordMedicineAction = async (
     );
 
 
-    console.log(
-      `[DB HISTORY] ${finalMedicineName} → ${status}`
-    );
-
-
     // -------------------------------------------------
-    // TAKEN → Stock -1
+    // Stock sirf TAKEN par reduce hoga
+    // MISSED par stock same rahega
     // -------------------------------------------------
+
     if (status === 'TAKEN') {
 
       await db.execute(
@@ -556,44 +658,67 @@ export const recordMedicineAction = async (
         [medicineId]
       );
 
-      console.log(
-        `[DB STOCK] ${finalMedicineName} stock decreased by 1`
-      );
     }
 
 
     // -------------------------------------------------
-    // Get updated stock
+    // Latest remaining stock
     // -------------------------------------------------
-    const updatedMedicine =
-      await getMedicineById(medicineId);
+
+    const checkRes =
+      await db.execute(
+        `
+        SELECT remaining_stock
+        FROM medicines
+        WHERE id = ?;
+        `,
+        [medicineId]
+      );
 
 
-    const remainingStock =
-      updatedMedicine?.remaining_stock ?? 0;
+    let remaining = 0;
+
+
+    if (
+      checkRes &&
+      checkRes.rows &&
+      checkRes.rows.length > 0
+    ) {
+
+      const item =
+        checkRes.rows.item
+          ? checkRes.rows.item(0)
+          : checkRes.rows[0];
+
+      remaining =
+        Number(
+          item.remaining_stock
+        ) || 0;
+    }
 
 
     console.log(
-      `[DB STOCK] Remaining: ${remainingStock}`
+      '[HISTORY] Action saved successfully'
+    );
+
+    console.log(
+      '[HISTORY] Remaining stock:',
+      remaining
     );
 
 
     return {
       success: true,
-      medicineId: medicineId,
-      name: finalMedicineName,
-      status: status,
-      remainingStock: remainingStock,
-      date: dateStr,
-      actionTime: timeStr,
+      remainingStock: remaining,
+      name: medicineName,
     };
 
 
-  } catch (error) {
+  } catch (err) {
 
     console.log(
-      '[DB RECORD ACTION ERROR]:',
-      error
+      '[HISTORY ERROR]',
+      err
     );
 
     return {
@@ -601,7 +726,6 @@ export const recordMedicineAction = async (
     };
   }
 };
-
 
 // =====================================================
 // 9. SIMPLE TAKE MEDICINE HELPER
@@ -667,34 +791,113 @@ export const getMedicineHistory = async () => {
 
 
 // =====================================================
-// 11. GET HISTORY BY DATE
-// Example:
-// getMedicineHistoryByDate('2026-08-19')
+// Get History Grouped By Date
 // =====================================================
-export const getMedicineHistoryByDate = async (
-  date
-) => {
+
+export const getMedicineHistoryGroupedByDate = async () => {
   try {
 
-    const result = await db.execute(
+    const res = await db.execute(
       `
       SELECT *
       FROM medicine_history
-      WHERE date = ?
-      ORDER BY id DESC;
-      `,
-      [date]
+      ORDER BY date DESC, id DESC;
+      `
     );
 
-    return rowsToArray(result?.rows);
+
+    if (
+      !res ||
+      !res.rows
+    ) {
+      return [];
+    }
+
+
+    let list = [];
+
+
+    if (res.rows._array) {
+
+      list = res.rows._array;
+
+    } else if (
+      Array.isArray(res.rows)
+    ) {
+
+      list = res.rows;
+
+    } else {
+
+      for (
+        let i = 0;
+        i < res.rows.length;
+        i++
+      ) {
+
+        list.push(
+          res.rows.item
+            ? res.rows.item(i)
+            : res.rows[i]
+        );
+
+      }
+
+    }
+
+
+    // -------------------------------------------------
+    // Date ke according grouping
+    // -------------------------------------------------
+
+    const groups = {};
+
+
+    list.forEach((item) => {
+
+      const date =
+        item.date || 'UNKNOWN';
+
+
+      if (!groups[date]) {
+
+        groups[date] = [];
+
+      }
+
+
+      groups[date].push(item);
+
+    });
+
+
+    // -------------------------------------------------
+    // Object → Array
+    // -------------------------------------------------
+
+    return Object.keys(groups)
+      .sort(
+        (a, b) =>
+          b.localeCompare(a)
+      )
+      .map((date) => ({
+
+        date,
+
+        records:
+          groups[date],
+
+      }));
+
 
   } catch (error) {
 
     console.log(
-      '[DB HISTORY DATE ERROR]:',
+      '[GROUPED HISTORY ERROR]',
       error
     );
 
     return [];
+
   }
 };

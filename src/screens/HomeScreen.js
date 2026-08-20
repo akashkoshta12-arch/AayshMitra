@@ -26,6 +26,33 @@ export default function HomeScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
+
+  const getDoseTimes = (item) => {
+    try {
+      if (item.doses) {
+        const parsed = JSON.parse(item.doses);
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+
+      // Backward compatibility
+      if (item.alarm_time) {
+        return [item.alarm_time];
+      }
+
+      return [];
+    } catch (error) {
+      console.log('[DOSE DISPLAY ERROR]', error);
+
+      return item.alarm_time
+        ? [item.alarm_time]
+        : [];
+    }
+  };
+
+
   const handleDelete = (id, name) => {
     Alert.alert(
       lang === 'hi' ? 'दवा हटाएं?' : 'Delete Medicine?',
@@ -56,8 +83,8 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.patientName}>{patient.name || 'आकाश'} 👋</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity 
-              style={styles.historyBtn} 
+            <TouchableOpacity
+              style={styles.historyBtn}
               onPress={() => navigation.navigate('History')}
             >
               <Text style={styles.historyBtnText}>📋</Text>
@@ -103,8 +130,28 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.nameCol}>
                   <Text style={styles.tableName} numberOfLines={1}>{item.name}</Text>
                   <View style={styles.metaRow}>
-                    <Text style={styles.timeTag}>⏰ {item.alarm_time}</Text>
-                    {isLowStock && <Text style={styles.lowStockWarning}>⚠️ Low Stock</Text>}
+
+                    <View style={styles.doseTimesContainer}>
+                      <Text style={styles.clockIcon}>⏰</Text>
+
+                      {getDoseTimes(item).map((time, index) => (
+                        <View
+                          key={`${item.id}-dose-${index}`}
+                          style={styles.doseTimeBadge}
+                        >
+                          <Text style={styles.doseTimeText}>
+                            {time}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {isLowStock && (
+                      <Text style={styles.lowStockWarning}>
+                        ⚠️ Low Stock
+                      </Text>
+                    )}
+
                   </View>
                 </View>
 
@@ -145,6 +192,31 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  doseTimesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 5,
+    flex: 1,
+  },
+
+  clockIcon: {
+    fontSize: 13,
+  },
+
+  doseTimeBadge: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+
+  doseTimeText: {
+    fontSize: 12,
+    color: '#0284C7',
+    fontWeight: '800',
+  },
+
   container: { flex: 1, padding: 16 },
   headerCard: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#0F172A', padding: 16, borderRadius: 16, marginBottom: 14 },
   profileInfo: { flex: 1 },
@@ -157,7 +229,7 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
   countBadge: { backgroundColor: '#E2E8F0', paddingHorizontal: 10, borderRadius: 12, fontWeight: 'bold' },
-  
+
   tableRow: { flexDirection: 'row', backgroundColor: '#FFF', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' },
   lowStockRow: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
   imageCol: { width: 50, marginRight: 10 },
@@ -171,13 +243,13 @@ const styles = StyleSheet.create({
   stockCol: { width: 45, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   stockNum: { fontSize: 18, fontWeight: 'bold', color: '#16A34A' },
   stockLabel: { fontSize: 10, color: '#64748B' },
-  
+
   actionCol: { justifyContent: 'space-between', gap: 6 },
   editBtn: { backgroundColor: '#FEF3C7', padding: 8, borderRadius: 8 },
   editIconText: { fontSize: 14 },
   deleteBtn: { backgroundColor: '#FEE2E2', padding: 8, borderRadius: 8 },
   deleteIconText: { fontSize: 14 },
-  
+
   emptyContainer: { alignItems: 'center', marginTop: 50 },
   emptyIcon: { fontSize: 40 },
   emptyText: { color: '#64748B', fontWeight: 'bold' },

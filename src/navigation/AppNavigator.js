@@ -10,6 +10,8 @@ import AddMedicineScreen from '../screens/AddMedicineScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import AlarmRingScreen from '../screens/AlarmRingScreen';
 
+
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {

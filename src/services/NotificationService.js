@@ -606,93 +606,70 @@ export const scheduleMultipleDoses = async (
 };
 
 
-// =====================================================
-// Cancel All Notifications For Medicine
-// =====================================================
 export const cancelAllNotificationsForMedicine = async (
   medicineId
 ) => {
-
   try {
 
-    const numericMedicineId =
-      Number(medicineId);
+    const baseId = String(medicineId);
 
-
-    if (
-      !Number.isInteger(
-        numericMedicineId
-      )
-    ) {
-
-      console.log(
-        '[ALARM CANCEL] Invalid medicine ID:',
-        medicineId
-      );
-
-      return false;
-    }
-
-
-    // Get all scheduled trigger IDs
-    const triggerIds =
-      await notifee.getTriggerNotificationIds();
-
-
-    console.log(
-      '[ALARM CANCEL] All triggers:',
-      triggerIds
-    );
-
-
-    const prefix =
-      `medicine_${numericMedicineId}_dose_`;
-
-
-    const matchingIds =
-      triggerIds.filter(
-        (id) =>
-          id.startsWith(prefix)
-      );
-
-
-    console.log(
-      '[ALARM CANCEL] Matching triggers:',
-      matchingIds
-    );
-
-
-    // Cancel each matching trigger
-    for (
-      const notificationId
-      of matchingIds
-    ) {
-
+    // Single-dose notification ID
+    try {
       await notifee.cancelTriggerNotification(
-        notificationId
+        baseId
+      );
+    } catch (e) {
+      console.log(
+        '[ALARM] Single notification not found:',
+        baseId
       );
     }
 
 
-    console.log(
-      `[ALARM] Notifications cancelled for Medicine ID: ${numericMedicineId}`
-    );
+    // Multiple-dose notification IDs
+    for (let i = 0; i < 10; i++) {
 
+      const notificationId =
+        `${baseId}_${i}`;
+
+      try {
+
+        await notifee.cancelTriggerNotification(
+          notificationId
+        );
+
+        console.log(
+          '[ALARM] Cancelled:',
+          notificationId
+        );
+
+      } catch (e) {
+
+        // Notification exist nahi karti to ignore
+        console.log(
+          '[ALARM] Notification not found:',
+          notificationId
+        );
+
+      }
+    }
+
+    console.log(
+      `[ALARM] All reminders cancelled for Medicine ID: ${baseId}`
+    );
 
     return true;
 
-
-  } catch (error) {
+  } catch (err) {
 
     console.log(
       '[ALARM CANCEL ERROR]',
-      error
+      err
     );
 
     return false;
   }
 };
-
 
 // =====================================================
 // Low Stock Alert
