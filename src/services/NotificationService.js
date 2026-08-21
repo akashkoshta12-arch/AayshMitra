@@ -712,6 +712,189 @@ export const triggerLowStockAlert = async (
   }
 };
 
+// =====================================================
+// Health Reminder Notification
+// =====================================================
+
+export const scheduleHealthReminder = async (
+  id,
+  type,
+  reminderDate,
+  timeString
+) => {
+  try {
+    await setupNotificationChannels();
+
+    if (
+      !reminderDate ||
+      !timeString ||
+      !timeString.includes(':')
+    ) {
+      throw new Error(
+        `Invalid date/time: ${reminderDate} ${timeString}`
+      );
+    }
+
+    // Date format: DD-MM-YYYY
+    const [day, month, year] = reminderDate
+      .split('-')
+      .map(Number);
+
+    // Time format: HH:MM
+    const [hour, minute] = timeString
+      .split(':')
+      .map(Number);
+
+    if (
+      !day ||
+      !month ||
+      !year ||
+      Number.isNaN(hour) ||
+      Number.isNaN(minute) ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      throw new Error(
+        `Invalid date/time: ${reminderDate} ${timeString}`
+      );
+    }
+
+    // Exact future date + time
+    const triggerDate = new Date(
+      year,
+      month - 1,
+      day,
+      hour,
+      minute,
+      0,
+      0
+    );
+
+    const now = new Date();
+
+    console.log(
+      '[HEALTH REMINDER] Current:',
+      now.toLocaleString()
+    );
+
+    console.log(
+      '[HEALTH REMINDER] Scheduled:',
+      triggerDate.toLocaleString()
+    );
+
+    // Past date/time allow nahi karna
+    if (triggerDate.getTime() <= now.getTime()) {
+      throw new Error(
+        'Reminder date/time must be in the future'
+      );
+    }
+
+    const isBP = type === 'BP';
+
+    await notifee.createTriggerNotification(
+      {
+        id: `health_${id}`,
+
+        title: isBP
+          ? '🩺 BP चेक करने का समय'
+          : '🩸 Sugar चेक करने का समय',
+
+        body: isBP
+          ? 'कृपया अपना Blood Pressure check करके AayushMitra में reading दर्ज करें।'
+          : 'कृपया अपना Blood Sugar check करके AayushMitra में reading दर्ज करें।',
+
+        data: {
+          healthReminderId: String(id),
+          healthType: type,
+          reminderDate,
+          reminderTime: timeString,
+        },
+
+        android: {
+          channelId: CHANNEL_ID,
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.ALARM,
+          sound: 'default',
+
+          vibrationPattern: [
+            300,
+            500,
+            300,
+            500,
+          ],
+
+          pressAction: {
+            id: 'default',
+          },
+        },
+      },
+
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: triggerDate.getTime(),
+
+        alarmManager: {
+          allowWhileIdle: true,
+        },
+      }
+    );
+
+    console.log(
+      '[HEALTH REMINDER] SUCCESS',
+      {
+        id,
+        type,
+        reminderDate,
+        timeString,
+      }
+    );
+
+    return {
+      success: true,
+      triggerDate,
+    };
+
+  } catch (error) {
+    console.log(
+      '[HEALTH REMINDER ERROR]',
+      error
+    );
+
+    return {
+      success: false,
+      error,
+    };
+  }
+};
+
+// =====================================================
+// Cancel Health Reminder Notification
+// =====================================================
+
+export const cancelHealthReminder = async (id) => {
+  try {
+    await notifee.cancelTriggerNotification(
+      `health_${id}`
+    );
+
+    console.log(
+      '[HEALTH REMINDER] Notification cancelled:',
+      id
+    );
+
+    return true;
+
+  } catch (error) {
+    console.log(
+      '[HEALTH REMINDER CANCEL ERROR]',
+      error
+    );
+
+    return false;
+  }
+};
 
 // Backward compatibility
 export const triggerLowStockNotification =

@@ -104,9 +104,285 @@ export const initDatabase = async () => {
       );
     `);
 
+    // 4. Daily Health Readings Table
+    await db.execute(`
+  CREATE TABLE IF NOT EXISTS health_readings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    reading_value TEXT NOT NULL,
+    reading_time TEXT NOT NULL,
+    date TEXT NOT NULL,
+    action_time TEXT NOT NULL
+  );
+`);
+
+    try {
+      await db.execute(
+        `ALTER TABLE health_readings ADD COLUMN meal_timing TEXT;`
+      );
+    } catch (e) {
+      // Column already exists
+    }
+    // =====================================================
+    // Health Reminder Table
+    // =====================================================
+
+    await db.execute(`
+  CREATE TABLE IF NOT EXISTS health_reminders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,
+  reminder_date TEXT NOT NULL,
+  reminder_time TEXT NOT NULL,
+  enabled INTEGER DEFAULT 1
+);
+`);
+    try {
+      await db.execute(
+        `ALTER TABLE health_reminders ADD COLUMN reminder_date TEXT;`
+      );
+    } catch (e) {
+      // Column already exists
+    }
+
     console.log('[DB] Database initialized successfully');
   } catch (error) {
     console.log('[DB INIT ERROR]:', error);
+  }
+};
+
+
+// =====================================================
+// Insert Health Reminder
+// =====================================================
+
+export const insertHealthReminder = async (reminder) => {
+  try {
+    const result = await db.execute(
+      `
+      INSERT INTO health_reminders
+      (
+        type,
+        reminder_date,
+        reminder_time,
+        enabled
+      )
+      VALUES (?, ?, ?, ?);
+      `,
+      [
+        reminder.type,
+        reminder.reminderDate,
+        reminder.reminderTime,
+        1,
+      ]
+    );
+
+    console.log(
+      '[HEALTH REMINDER] Saved:',
+      result?.insertId
+    );
+
+    return {
+      success: true,
+      insertId: result?.insertId,
+    };
+
+  } catch (error) {
+    console.log(
+      '[HEALTH REMINDER INSERT ERROR]',
+      error
+    );
+
+    return {
+      success: false,
+    };
+  }
+};
+
+
+// =====================================================
+// Get Health Reminders
+// =====================================================
+
+export const getHealthReminders = async () => {
+  try {
+    const result = await db.execute(`
+      SELECT *
+      FROM health_reminders
+      ORDER BY id DESC;
+    `);
+
+    if (!result || !result.rows) {
+      return [];
+    }
+
+    if (result.rows._array) {
+      return result.rows._array;
+    }
+
+    if (Array.isArray(result.rows)) {
+      return result.rows;
+    }
+
+    const list = [];
+
+    for (let i = 0; i < result.rows.length; i++) {
+      list.push(
+        result.rows.item
+          ? result.rows.item(i)
+          : result.rows[i]
+      );
+    }
+
+    return list;
+
+  } catch (error) {
+    console.log(
+      '[HEALTH REMINDER FETCH ERROR]',
+      error
+    );
+
+    return [];
+  }
+};
+
+// =====================================================
+// Delete Health Reminder
+// =====================================================
+
+export const deleteHealthReminder = async (id) => {
+  try {
+    await db.execute(
+      `DELETE FROM health_reminders WHERE id = ?;`,
+      [Number(id)]
+    );
+
+    console.log(
+      '[HEALTH REMINDER] Deleted:',
+      id
+    );
+
+    return true;
+
+  } catch (error) {
+    console.log(
+      '[HEALTH REMINDER DELETE ERROR]',
+      error
+    );
+
+    return false;
+  }
+};
+
+// =====================================================
+// Insert Health Reading
+// =====================================================
+
+// =====================================================
+// Insert Health Reading
+// =====================================================
+
+export const insertHealthReading = async (reading) => {
+  try {
+
+    const result = await db.execute(
+      `
+      INSERT INTO health_readings
+      (
+        type,
+        reading_value,
+        reading_time,
+        date,
+        action_time,
+        meal_timing
+      )
+      VALUES (?, ?, ?, ?, ?, ?);
+      `,
+      [
+        reading.type,
+        reading.value,
+        reading.readingTime,
+
+        // Current local date
+        getLocalDate(),
+
+        // Current local time
+        getLocalTime(),
+
+        // BEFORE_MEAL / AFTER_MEAL
+        reading.mealTiming || 'BEFORE_MEAL',
+      ]
+    );
+
+
+    console.log(
+      '[HEALTH] Reading saved:',
+      result?.insertId
+    );
+
+
+    return {
+      success: true,
+      insertId: result?.insertId,
+    };
+
+
+  } catch (error) {
+
+    console.log(
+      '[HEALTH INSERT ERROR]',
+      error
+    );
+
+
+    return {
+      success: false,
+      error,
+    };
+  }
+};
+// =====================================================
+// Get Health Readings
+// =====================================================
+
+export const getHealthReadings = async () => {
+  try {
+    const result = await db.execute(`
+      SELECT *
+      FROM health_readings
+      ORDER BY id DESC;
+    `);
+
+    if (!result || !result.rows) {
+      return [];
+    }
+
+    if (result.rows._array) {
+      return result.rows._array;
+    }
+
+    if (Array.isArray(result.rows)) {
+      return result.rows;
+    }
+
+    const list = [];
+
+    for (let i = 0; i < result.rows.length; i++) {
+      list.push(
+        result.rows.item
+          ? result.rows.item(i)
+          : result.rows[i]
+      );
+    }
+
+    return list;
+
+  } catch (error) {
+    console.log(
+      '[HEALTH FETCH ERROR]',
+      error
+    );
+
+    return [];
   }
 };
 

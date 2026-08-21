@@ -13,6 +13,10 @@ import AlarmRingScreen from '../screens/AlarmRingScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import AddReportScreen from '../screens/AddReportScreen';
+import HealthTrackingScreen from '../screens/HealthTrackingScreen';
+import HealthHistoryScreen from '../screens/HealthHistoryScreen';
+import HealthReminderScreen from '../screens/HealthReminderScreen';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +37,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Dashboard" component={DashboardScreen}/>
         <Stack.Screen name="Reports" component={ReportsScreen}/>
         <Stack.Screen name="AddReport" component={AddReportScreen}/>
+        <Stack.Screen name="HealthTracking" component={HealthTrackingScreen}/>
+        <Stack.Screen name="HealthHistory" component={HealthHistoryScreen}/>
+        <Stack.Screen name="HealthReminder" component={HealthReminderScreen}/>
       </Stack.Navigator>
     </NavigationContainer>
   );
